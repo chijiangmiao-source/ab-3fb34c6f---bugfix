@@ -1,0 +1,17 @@
+{
+  "name": "optics-device-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "采集器设备模拟器：按发布编号与摘要幂等暂存，独立持久化以支撑崩溃恢复核对",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2"
+  }
+}

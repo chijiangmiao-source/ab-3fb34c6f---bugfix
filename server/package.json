@@ -1,0 +1,18 @@
+{
+  "name": "optics-release-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "低温光学台参数发布后端：发布意图 / 暂存回执 / 生效代次的持久化状态机",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2"
+  }
+}
