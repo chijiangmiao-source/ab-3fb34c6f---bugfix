@@ -3,6 +3,7 @@ import * as api from './api.js'
 
 const PHASE = {
   staging: { label: '暂存中', cls: 'badge-staging' },
+  activating: { label: '生效中（待设备确认）', cls: 'badge-staging' },
   published: { label: '已发布', cls: 'badge-published' },
   failed: { label: '未发布（摘要不符）', cls: 'badge-failed' },
 }
@@ -125,6 +126,7 @@ function ReleaseDetail({ release, onClose, onReconcile }) {
         <div><dt>生效代次</dt><dd>{release.generation != null ? `G${release.generation}` : '—'}</dd></div>
         <div><dt>参数摘要</dt><dd className="mono">{short(release.digest)}</dd></div>
         <div><dt>回执汇总</dt><dd>{release.summary.matched}/{release.summary.expected} 匹配（已收 {release.summary.received}）</dd></div>
+        <div><dt>生效确认</dt><dd>{release.summary.activated}/{release.summary.expected} 台已实际生效{release.generation != null ? `（G${release.generation}）` : ''}</dd></div>
         <div><dt>创建时间</dt><dd>{fmt(release.createdAt)}</dd></div>
         <div><dt>发布时间</dt><dd>{fmt(release.publishedAt)}</dd></div>
       </dl>
@@ -153,7 +155,34 @@ function ReleaseDetail({ release, onClose, onReconcile }) {
           })}
         </tbody>
       </table>
-      {release.status === 'staging' && (
+      <h3>各采集器实际生效</h3>
+      <table>
+        <thead>
+          <tr><th>采集器</th><th>生效摘要</th><th>生效代次</th><th>确认结果</th></tr>
+        </thead>
+        <tbody>
+          {release.targets.map((d) => {
+            const a = (release.activations ?? []).find((x) => x.deviceId === d)
+            return (
+              <tr key={d}>
+                <td className="mono">{d}</td>
+                {a ? (
+                  <>
+                    <td className="mono">{short(a.digest)}</td>
+                    <td>G{a.generation}</td>
+                    <td>{a.matches ? '✅ 已实际生效' : '❌ 生效内容不符'}</td>
+                  </>
+                ) : (
+                  <td colSpan={3} className="muted">
+                    {release.status === 'activating' ? '尚未确认实际生效…' : '—'}
+                  </td>
+                )}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {(release.status === 'staging' || release.status === 'activating') && (
         <button onClick={() => onReconcile(release.id)}>立即核对并补记</button>
       )}
     </section>

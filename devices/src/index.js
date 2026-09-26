@@ -71,6 +71,9 @@ const activeDto = (row) => ({
 const app = express()
 app.use(express.json({ limit: '256kb' }))
 
+// 测试钩子状态：按设备控制 activate 行为（reject=拒绝, stall=挂起直至超时）
+const activateFaults = new Map()
+
 app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'optics-device-simulator', time: new Date().toISOString() })
 })
@@ -93,8 +96,16 @@ app.post('/devices/:deviceId/stage', (req, res) => {
   return res.status(201).json({ deviceId, releaseId, digest, stagedAt, idempotent: false })
 })
 
-app.post('/devices/:deviceId/activate', (req, res) => {
+app.post('/devices/:deviceId/activate', async (req, res) => {
   const { deviceId } = req.params
+  // 测试故障注入：模拟设备拒绝或迟到（挂起不响应）
+  const fault = activateFaults.get(deviceId)
+  if (fault === 'stall') {
+    await new Promise(() => {}) // 永不返回，由调用方超时
+  }
+  if (fault === 'reject') {
+    return res.status(503).json({ error: 'ACTIVATION_REJECTED_BY_DEVICE' })
+  }
   const { releaseId, digest, generation } = req.body ?? {}
   if (!Number.isInteger(releaseId) || releaseId <= 0 || typeof digest !== 'string' || !Number.isInteger(generation) || generation <= 0) {
     return res.status(400).json({ error: 'INVALID_ACTIVATION_REQUEST' })
@@ -137,6 +148,20 @@ if (TEST_HOOKS) {
     const badDigest = typeof digest === 'string' && digest ? digest : `corrupted-${existing.digest}`
     q.corrupt.run(badDigest, '-- corrupted payload --', deviceId, Number(releaseId))
     return res.json({ deviceId, releaseId: Number(releaseId), digest: badDigest })
+  })
+
+  // 测试钩子：控制某台设备对 activate 的响应（ok/reject/stall），模拟拒绝或迟到
+  app.post('/test-hooks/activate-fault', (req, res) => {
+    const { deviceId, mode } = req.body ?? {}
+    if (typeof deviceId !== 'string' || !deviceId) {
+      return res.status(400).json({ error: 'INVALID_FAULT_REQUEST' })
+    }
+    if (mode === 'reject' || mode === 'stall') {
+      activateFaults.set(deviceId, mode)
+    } else {
+      activateFaults.delete(deviceId)
+    }
+    return res.json({ deviceId, mode: activateFaults.get(deviceId) ?? 'ok' })
   })
 }
 

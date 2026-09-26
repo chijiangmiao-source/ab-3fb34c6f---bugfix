@@ -20,8 +20,15 @@ const db = openDb(path.join(DATA_DIR, 'app.db'))
 const simulator = createSimulatorClient(SIMULATOR_URL)
 const service = createService({ db, simulator, knownDevices: KNOWN_DEVICES })
 
-// 进程重启后的第一道动作：向模拟器核对并补记崩溃窗口内丢失的回执。
-// 模拟器可能尚未就绪，做有限次退避重试；之后由周期任务兜底。
+const app = createApp({ service, webDist: WEB_DIST, testHooks: TEST_HOOKS })
+app.listen(PORT, () => {
+  console.log(`低温光学台参数发布接口已启动: http://0.0.0.0:${PORT} (模拟器: ${SIMULATOR_URL})`)
+})
+
+// 进程重启后的第一道动作：向模拟器核对并补记崩溃窗口内丢失的回执，
+// 并逐台核对/补齐尚未完成的最终切换。
+// 不阻塞健康入口：监听先启动，核对在后台进行；模拟器未就绪时有限次退避重试，
+// 之后由周期任务兜底。
 async function reconcileWithRetry(attempts = 5) {
   for (let i = 1; i <= attempts; i += 1) {
     try {
@@ -37,12 +44,7 @@ async function reconcileWithRetry(attempts = 5) {
   }
 }
 
-await reconcileWithRetry()
+void reconcileWithRetry()
 setInterval(() => {
   service.reconcileAll().catch((err) => console.error(`[reconcile] 周期核对失败: ${err.message}`))
 }, 10_000).unref()
-
-const app = createApp({ service, webDist: WEB_DIST, testHooks: TEST_HOOKS })
-app.listen(PORT, () => {
-  console.log(`低温光学台参数发布接口已启动: http://0.0.0.0:${PORT} (模拟器: ${SIMULATOR_URL})`)
-})
