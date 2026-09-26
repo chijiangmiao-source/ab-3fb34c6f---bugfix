@@ -13,7 +13,7 @@ npm run build
 node --input-type=module -e "await import('/app/server/src/app.js'); await import('/app/server/src/service.js'); console.log('server 模块加载 OK')"
 
 echo ""
-echo "=== [3/3] API 冒烟：回执补记与重复发布复核 ==="
+echo "=== [3/3] API 冒烟：生效中断恢复与重复发布复核 ==="
 node /app/verify/smoke.mjs
 
 echo ""

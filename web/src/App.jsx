@@ -3,6 +3,7 @@ import * as api from './api.js'
 
 const PHASE = {
   staging: { label: '暂存中', cls: 'badge-staging' },
+  activating: { label: '生效中', cls: 'badge-activating' },
   published: { label: '已发布', cls: 'badge-published' },
   failed: { label: '未发布（摘要不符）', cls: 'badge-failed' },
 }
@@ -125,6 +126,7 @@ function ReleaseDetail({ release, onClose, onReconcile }) {
         <div><dt>生效代次</dt><dd>{release.generation != null ? `G${release.generation}` : '—'}</dd></div>
         <div><dt>参数摘要</dt><dd className="mono">{short(release.digest)}</dd></div>
         <div><dt>回执汇总</dt><dd>{release.summary.matched}/{release.summary.expected} 匹配（已收 {release.summary.received}）</dd></div>
+        <div><dt>生效确认</dt><dd>{release.summary.confirmed}/{release.summary.expected} 已确认</dd></div>
         <div><dt>创建时间</dt><dd>{fmt(release.createdAt)}</dd></div>
         <div><dt>发布时间</dt><dd>{fmt(release.publishedAt)}</dd></div>
       </dl>
@@ -153,8 +155,39 @@ function ReleaseDetail({ release, onClose, onReconcile }) {
           })}
         </tbody>
       </table>
-      {release.status === 'staging' && (
-        <button onClick={() => onReconcile(release.id)}>立即核对并补记</button>
+      {release.generation != null && (
+        <>
+          <h3>各采集器生效确认（设备实际生效信息）</h3>
+          <table>
+            <thead>
+              <tr><th>采集器</th><th>生效发布</th><th>生效摘要</th><th>生效代次</th><th>生效时间</th><th>与发布一致</th></tr>
+            </thead>
+            <tbody>
+              {release.targets.map((d) => {
+                const a = (release.activations ?? []).find((x) => x.deviceId === d)
+                return (
+                  <tr key={d}>
+                    <td className="mono">{d}</td>
+                    {a ? (
+                      <>
+                        <td>#{a.releaseId}</td>
+                        <td className="mono">{short(a.digest)}</td>
+                        <td>G{a.generation}</td>
+                        <td>{fmt(a.activatedAt)}</td>
+                        <td>{a.matches ? '✅ 一致' : '❌ 不符'}</td>
+                      </>
+                    ) : (
+                      <td colSpan={5} className="muted">等待生效确认…</td>
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+      {(release.status === 'staging' || release.status === 'activating') && (
+        <button onClick={() => onReconcile(release.id)}>立即核对并补齐</button>
       )}
     </section>
   )
@@ -237,7 +270,7 @@ export default function App() {
             <thead>
               <tr>
                 <th>编号</th><th>发布标识</th><th>摘要</th><th>汇总阶段</th>
-                <th>回执</th><th>生效代次</th><th>创建时间</th>
+                <th>回执</th><th>生效确认</th><th>生效代次</th><th>创建时间</th>
               </tr>
             </thead>
             <tbody>
@@ -252,6 +285,7 @@ export default function App() {
                   <td className="mono">{short(r.digest)}</td>
                   <td><PhaseBadge status={r.status} /></td>
                   <td>{r.summary.received}/{r.summary.expected}</td>
+                  <td>{r.generation != null ? `${r.summary.confirmed}/${r.summary.expected}` : '—'}</td>
                   <td>{r.generation != null ? `G${r.generation}` : '—'}</td>
                   <td>{fmt(r.createdAt)}</td>
                 </tr>

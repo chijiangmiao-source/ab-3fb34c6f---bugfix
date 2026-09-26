@@ -57,6 +57,10 @@ export function createApp({ service, webDist, testHooks = false }) {
     app.post('/api/test-hooks/simulate-crash-after-stage', asyncH(async (req, res) => {
       res.status(201).json({ release: await service.simulateCrashAfterStage(req.body) })
     }))
+    // 复现“代次已指派、逐台最终切换途中进程退出”的崩溃窗口（仅测试用途）
+    app.post('/api/test-hooks/simulate-crash-during-activation', asyncH(async (req, res) => {
+      res.status(201).json({ release: await service.simulateCrashDuringActivation(req.body) })
+    }))
   }
 
   // 前端静态资源（生产构建产物）

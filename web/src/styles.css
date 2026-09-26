@@ -131,6 +131,7 @@ tbody tr:hover { background: rgba(88, 166, 255, 0.06); }
   border: 1px solid transparent;
 }
 .badge-staging { color: var(--warn); border-color: var(--warn); }
+.badge-activating { color: var(--accent); border-color: var(--accent); }
 .badge-published { color: var(--ok); border-color: var(--ok); }
 .badge-failed { color: var(--err); border-color: var(--err); }
 

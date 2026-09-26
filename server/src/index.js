@@ -20,7 +20,8 @@ const db = openDb(path.join(DATA_DIR, 'app.db'))
 const simulator = createSimulatorClient(SIMULATOR_URL)
 const service = createService({ db, simulator, knownDevices: KNOWN_DEVICES })
 
-// 进程重启后的第一道动作：向模拟器核对并补记崩溃窗口内丢失的回执。
+// 进程重启后的第一道动作：向模拟器核对并补记崩溃窗口内丢失的回执，
+// 并继续驱动中断的逐台最终切换（补齐未确认设备），直到没有可推进的发布。
 // 模拟器可能尚未就绪，做有限次退避重试；之后由周期任务兜底。
 async function reconcileWithRetry(attempts = 5) {
   for (let i = 1; i <= attempts; i += 1) {

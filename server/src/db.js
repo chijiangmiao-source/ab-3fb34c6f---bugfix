@@ -4,9 +4,11 @@ import Database from 'better-sqlite3'
 
 /**
  * 持久化状态机：
- *   releases    —— 发布意图（staging → published | failed）
+ *   releases    —— 发布意图（staging → activating → published | failed）
  *   receipts    —— 每台采集器的暂存回执（先落设备、再落库，崩溃后靠 reconcile 补记）
  *   generations —— 生效代次，单调递增，仅在全部回执匹配时原子推进
+ *   activations —— 每台采集器的生效确认（设备实际报告的发布编号/摘要/代次，
+ *                  全部目标确认一致后发布才由 activating 置为 published）
  */
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS releases (
@@ -16,7 +18,7 @@ CREATE TABLE IF NOT EXISTS releases (
   params       TEXT NOT NULL,
   targets      TEXT NOT NULL,
   status       TEXT NOT NULL DEFAULT 'staging'
-               CHECK (status IN ('staging', 'published', 'failed')),
+               CHECK (status IN ('staging', 'activating', 'published', 'failed')),
   generation   INTEGER,
   created_at   TEXT NOT NULL,
   published_at TEXT
@@ -35,6 +37,17 @@ CREATE TABLE IF NOT EXISTS generations (
   generation   INTEGER PRIMARY KEY,
   release_id   INTEGER NOT NULL UNIQUE REFERENCES releases (id),
   published_at TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS activations (
+  release_id        INTEGER NOT NULL REFERENCES releases (id),
+  device_id         TEXT    NOT NULL,
+  active_release_id INTEGER NOT NULL,
+  digest            TEXT    NOT NULL,
+  generation        INTEGER NOT NULL,
+  activated_at      TEXT    NOT NULL,
+  recorded_at       TEXT    NOT NULL,
+  PRIMARY KEY (release_id, device_id)
 );
 `
 
